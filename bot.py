@@ -7,7 +7,7 @@ BOT_TOKEN = "8597887764:AAEVxSeivbs764C1wc93PAWvi4ir5EcJpRc"
 
 # 2. Render Deploy karne ke baad jo URL milega, wo yahan dalna hai
 # Example: "https://your-game-name.onrender.com"
-GAME_URL = "https://google.com" 
+GAME_URL = "https://my-game-bot.onrender.com" 
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
