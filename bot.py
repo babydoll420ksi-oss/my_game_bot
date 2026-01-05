@@ -3,7 +3,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- CONFIGURATION ---
 # 1. Apna Bot Token yahan dalein
-BOT_TOKEN = "8597887764:AAEVxSeivbs764C1wc93PAWvi4ir5EcJpRc" 
+BOT_TOKEN = "8597887764:AAGEwvVQL2Zh6Dj8eiTamFZ8YI-bLpg1s6E" 
 
 # 2. Render Deploy karne ke baad jo URL milega, wo yahan dalna hai
 # Example: "https://your-game-name.onrender.com"
