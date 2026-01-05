@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scrap Master</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* --- CSS STYLES --- */
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: linear-gradient(180deg, #1c1c1e 0%, #000000 100%);
+            color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* SCREENS */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; position: absolute; top: 0; left: 0; padding-bottom: 80px; }
+        .screen.active { display: flex; }
+
+        /* HEADER */
+        .header { width: 100%; padding: 20px; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .score-display { font-size: 48px; font-weight: 800; display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .user-badge { background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 5px;}
+
+        /* GAME AREA */
+        .game-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
+        .coin-container {
+            width: 280px; height: 280px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,255,255,0.4);
+            display: flex; justify-content: center; align-items: center;
+            border: 8px solid #d4af37; transition: transform 0.05s; cursor: pointer;
+        }
+        .coin-container:active { transform: scale(0.95); }
+        .coin-inner { font-size: 110px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4)); }
+
+        /* FOOTER */
+        .footer-controls { width: 90%; margin-bottom: 10px; }
+        .energy-bar-bg { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+        .energy-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #f1c40f, #e67e22); transition: width 0.1s; }
+
+        /* NAV BAR */
+        .nav-bar {
+            position: absolute; bottom: 20px; width: 95%; background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px); border-radius: 20px; padding: 10px;
+            display: flex; justify-content: space-around; border: 1px solid rgba(255,255,255,0.05); z-index: 20;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; font-size: 10px; gap: 5px; padding: 5px 10px; border-radius: 10px; cursor: pointer; }
+        .nav-item.active { background: rgba(255, 255, 255, 0.1); color: white; }
+        .nav-icon { font-size: 20px; }
+
+        /* FRIENDS SCREEN */
+        .friends-content { text-align: center; padding: 20px; width: 100%; }
+        .invite-card { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 20px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .big-btn { background: linear-gradient(90deg, #00b09b, #96c93d); border: none; padding: 15px 30px; border-radius: 12px; color: white; font-weight: bold; font-size: 18px; width: 100%; margin-top: 20px; cursor: pointer; }
+        
+        /* Loading & Float */
+        #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; display: flex; justify-content: center; align-items: center; color: #888; }
+        .float-text { position: absolute; color: white; font-size: 32px; font-weight: bold; pointer-events: none; animation: floatUp 0.8s forwards; z-index: 100; text-shadow: 0 0 10px gold; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-80px); } }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">LOADING...</div>
+
+    <div id="screen-game" class="screen active">
+        <div class="header">
+            <div class="user-badge"><span>🏆 Junkyard Boss</span></div>
+            <div class="score-display"><span>💰</span><span id="score">0</span></div>
+        </div>
+
+        <div class="game-area">
+            <div class="coin-container" id="bigButton">
+                <div class="coin-inner">⚙️</div>
+            </div>
+        </div>
+
+        <div class="footer-controls">
+            <div style="display:flex; justify-content:space-between;"><span>⚡ Energy</span><span id="energy-display">1000/1000</span></div>
+            <div class="energy-bar-bg"><div id="energy-fill"></div></div>
+        </div>
+    </div>
+
+    <div id="screen-friends" class="screen">
+        <div class="header"><h1>Invite Friends</h1></div>
+        <div class="friends-content">
+            <p style="color: #aaa; margin-bottom: 30px;">Invite friends and they get a<br><b style="color: #f1c40f;">5,000 Coin Bonus!</b></p>
+            <div class="invite-card">
+                <h3>Your Invite Link</h3>
+                <p style="font-size: 12px; color: #666; word-break: break-all;" id="invite-link">Loading...</p>
+                <button class="big-btn" onclick="shareLink()">Invite Friend</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="switchScreen('game', this)">
+            <span class="nav-icon">⛏️</span><span>Mine</span>
+        </div>
+        <div class="nav-item" onclick="switchScreen('friends', this)">
+            <span class="nav-icon">👥</span><span>Friends</span>
+        </div>
+        <div class="nav-item" style="opacity: 0.5;"><span class="nav-icon">🚀</span><span>Boost</span></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.setHeaderColor('#000000');
+
+        // --- ⚙️ CONFIGURATION (Zaroori) ---
+        // Yahan apne Bot ka username likhein (Bina @ ke)
+        const BOT_USERNAME = "YOUR_BOT_USERNAME_HERE"; 
+
+        // --- STATE ---
+        let score = 0;
+        let energy = 1000;
+        const maxEnergy = 1000;
+        let isDataLoaded = false;
+        let unsavedChanges = false;
+
+        const scoreEl = document.getElementById('score');
+        const energyDisplay = document.getElementById('energy-display');
+        const energyFill = document.getElementById('energy-fill');
+        const inviteLinkEl = document.getElementById('invite-link');
+
+        // --- REFERRAL & INIT ---
+        function checkReferral() {
+            const startParam = tg.initDataUnsafe.start_param;
+            if (startParam && !localStorage.getItem('ref_bonus_claimed')) {
+                score += 5000;
+                localStorage.setItem('ref_bonus_claimed', 'true');
+                tg.showAlert("🎁 Welcome Bonus! You got 5,000 Scrap.");
+                unsavedChanges = true;
+            }
+        }
+
+        const userId = tg.initDataUnsafe.user?.id || "12345";
+        const myLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+        inviteLinkEl.innerText = myLink;
+
+        function shareLink() {
+            const url = `https://t.me/share/url?url=${encodeURIComponent(myLink)}&text=${encodeURIComponent("Join my Squad!")}`;
+            tg.openTelegramLink(url);
+        }
+
+        // --- NAV ---
+        function switchScreen(screenName, btnElement) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`screen-${screenName}`).classList.add('active');
+            if(btnElement) btnElement.classList.add('active');
+        }
+
+        // --- DATA ---
+        function loadGame() {
+            tg.CloudStorage.getItem('scrap_game_data', (err, value) => {
+                if (!err && value) {
+                    try {
+                        const data = JSON.parse(value);
+                        score = data.score || 0;
+                        energy = data.energy || 1000;
+                    } catch (e) {}
+                }
+                checkReferral();
+                startGame();
+            });
+        }
+
+        function startGame() {
+            isDataLoaded = true;
+            updateUI();
+            document.getElementById('loading-screen').style.display = 'none';
+        }
+
+        setInterval(() => {
+            if (isDataLoaded && unsavedChanges) {
+                tg.CloudStorage.setItem('scrap_game_data', JSON.stringify({ score, energy }), (err) => {
+                    if (!err) unsavedChanges = false;
+                });
+            }
+        }, 3000);
+
+        // --- GAMEPLAY ---
+        document.getElementById('bigButton').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) handleTap(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+        }, { passive: false });
+
+        document.getElementById('bigButton').addEventListener('mousedown', (e) => handleTap(e.clientX, e.clientY));
+
+        function handleTap(x, y) {
+            if (!isDataLoaded || energy <= 0) return;
+            score++; energy--; unsavedChanges = true;
+            updateUI();
+            tg.HapticFeedback.impactOccurred('medium');
+            showFloat(x, y);
+            const btn = document.getElementById('bigButton');
+            btn.style.transform = `scale(0.95)`;
+            setTimeout(() => btn.style.transform = `scale(1)`, 100);
+        }
+
+        function updateUI() {
+            scoreEl.innerText = score.toLocaleString();
+            energyDisplay.innerText = `${Math.floor(energy)}/${maxEnergy}`;
+            energyFill.style.width = `${(energy / maxEnergy) * 100}%`;
+        }
+
+        function showFloat(x, y) {
+            const el = document.createElement('div');
+            el.className = 'float-text'; el.innerText = '+1';
+            el.style.left = `${x}px`; el.style.top = `${y}px`;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        setInterval(() => {
+            if (isDataLoaded && energy < maxEnergy) {
+                energy += 3; unsavedChanges = true; updateUI();
+            }
+        }, 1000);
+
+        loadGame();
+    </script>
+</body>
+  </html>
+          
